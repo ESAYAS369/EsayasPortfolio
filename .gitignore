@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# local run logs
+*.log.txt
+server-log.txt
+prod-log.txt

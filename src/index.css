@@ -1,0 +1,41 @@
+/* Fonts are loaded via <link> in index.html (non-render-blocking). */
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", "Noto Serif Ethiopic", serif;
+  --font-sans: "Inter", "Noto Sans Ethiopic", sans-serif;
+  
+  --color-gold: #c5a059;
+  --color-dark: #0a0a0a;
+  --color-surface: #1a1a1a;
+}
+
+@layer base {
+  body {
+    @apply bg-dark text-white font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+.glass {
+  @apply bg-white/5 backdrop-blur-md border border-white/10;
+}
+
+.cinematic-gradient {
+  background: radial-gradient(circle at 50% 50%, rgba(197, 160, 89, 0.1) 0%, transparent 70%);
+}
+
+.text-gold {
+  @apply text-gold;
+}
+
+.bg-gold {
+  @apply bg-gold;
+}
+
+.border-gold {
+  @apply border-gold;
+}
