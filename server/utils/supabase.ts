@@ -1,7 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL || "";
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabaseUrl =
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const supabaseServiceRoleKey =
+  process.env.SUPABASE_SECRET_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  "";
 
 const isConfigured = Boolean(
   supabaseUrl &&
@@ -74,6 +82,10 @@ const fallbackClient = {
     getUser: async () => ({ data: { user: null }, error: null }),
   },
 } as any;
+
+if (typeof (globalThis as any).WebSocket === "undefined") {
+  (globalThis as any).WebSocket = class DummyWebSocket {} as any;
+}
 
 export const supabaseAdmin = isConfigured
   ? createClient(supabaseUrl, supabaseServiceRoleKey, {

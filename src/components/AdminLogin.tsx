@@ -261,7 +261,7 @@ export default function AdminLogin({ onSuccess, onBackToSite }: AdminLoginProps)
 
       {/* Footer copyright */}
       <footer className="relative z-10 py-6 text-center text-white/20 text-[10px] uppercase tracking-[0.3em]">
-        &copy; 2026 ESAYAS ADAL LUXURY REAL ESTATE. {t("all_rights_reserved")}
+        @2026 Gudeta Technologies. All Rights Reserved.
       </footer>
 
       {/* Forgot Password Modal */}

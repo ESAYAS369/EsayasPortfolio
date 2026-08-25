@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Bed, Bath, Square, X, Check, Loader2, Play, Video, Search, ChevronDown, Filter } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, X, Check, Loader2, Play, Video, Search, ChevronDown, Filter, Sparkles, Film } from 'lucide-react';
 import { getProperties, Property, PROPERTY_TYPES as CATEGORIES } from '../services/propertyService';
+import PropertyVideoPlayer, { PropertyVideoModal } from './PropertyVideoPlayer';
 
 const PROPERTY_TYPES = ['all', ...CATEGORIES];
 
@@ -11,6 +12,7 @@ export default function PropertyList({ id }: { id?: string }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [videoModalProperty, setVideoModalProperty] = useState<Property | null>(null);
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('all');
@@ -140,10 +142,16 @@ export default function PropertyList({ id }: { id?: string }) {
                           {t('featured')}
                         </span>
                         {property.videoUrl && (
-                          <span className="bg-dark/60 backdrop-blur-md text-white text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1.5">
-                            <Video className="w-3 h-3 text-gold" />
-                            Video
-                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setVideoModalProperty(property);
+                            }}
+                            className="bg-dark/70 hover:bg-gold hover:text-dark backdrop-blur-md text-white text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1.5 transition-all duration-300 group/vtag cursor-pointer"
+                          >
+                            <Video className="w-3 h-3 text-gold group-hover/vtag:text-dark transition-colors" />
+                            Video Tour
+                          </button>
                         )}
                       </div>
 
@@ -161,9 +169,10 @@ export default function PropertyList({ id }: { id?: string }) {
                             whileTap={{ scale: 0.95 }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedProperty(property);
+                              setVideoModalProperty(property);
                             }}
-                            className="bg-gold text-dark p-3 rounded-full shadow-2xl group/btn transition-all duration-300 hover:bg-white flex items-center gap-2"
+                            className="bg-gold text-dark p-3 rounded-full shadow-2xl group/btn transition-all duration-300 hover:bg-white flex items-center gap-2 cursor-pointer"
+                            title={t('watch_video')}
                           >
                             <Play className="w-4 h-4 fill-current" />
                             <span className="text-[10px] uppercase tracking-widest font-bold pr-2 hidden group-hover/btn:block transition-all">{t('watch_video')}</span>
@@ -312,25 +321,28 @@ export default function PropertyList({ id }: { id?: string }) {
 
                 {selectedProperty.videoUrl && (
                   <div className="mb-10">
-                    <h3 className="text-lg font-serif mb-4 text-gold">{t('property_video')}</h3>
-                    <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black">
-                      {selectedProperty.videoUrl.includes('youtube.com') || selectedProperty.videoUrl.includes('youtu.be') ? (
-                        <iframe 
-                          src={selectedProperty.videoUrl.includes('youtu.be') 
-                            ? `https://www.youtube.com/embed/${selectedProperty.videoUrl.split('/').pop()}`
-                            : selectedProperty.videoUrl.replace('watch?v=', 'embed/')} 
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                          allowFullScreen
-                        />
-                      ) : (
-                        <video 
-                          src={selectedProperty.videoUrl} 
-                          controls 
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-serif text-gold flex items-center gap-2">
+                        <Film className="w-4 h-4" />
+                        {t('property_video')}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setVideoModalProperty(selectedProperty);
+                          setSelectedProperty(null);
+                        }}
+                        className="text-[10px] uppercase tracking-widest text-gold hover:text-white transition-colors flex items-center gap-1"
+                      >
+                        Cinema Mode ↗
+                      </button>
                     </div>
+                    <PropertyVideoPlayer
+                      videoUrl={selectedProperty.videoUrl}
+                      posterImage={selectedProperty.image}
+                      title={selectedProperty.title}
+                      autoPlay={false}
+                      muted={false}
+                    />
                   </div>
                 )}
 
@@ -342,6 +354,19 @@ export default function PropertyList({ id }: { id?: string }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Dedicated Cinema Video Modal */}
+      <PropertyVideoModal
+        property={videoModalProperty}
+        isOpen={Boolean(videoModalProperty)}
+        onClose={() => setVideoModalProperty(null)}
+        onOpenInquiry={() => {
+          if (videoModalProperty) {
+            setSelectedProperty(videoModalProperty);
+            setVideoModalProperty(null);
+          }
+        }}
+      />
     </section>
   );
 }

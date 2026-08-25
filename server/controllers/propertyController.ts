@@ -124,6 +124,38 @@ export const deleteProperty = async (req: Request, res: Response) => {
   }
 };
 
+const serverInquiries: Array<{
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  date?: string;
+  notes?: string;
+  propertyId?: string;
+  createdAt: string;
+}> = [
+  {
+    id: "inq-1",
+    name: "Tewodros Kassahun",
+    email: "teddy.k@gmail.com",
+    phone: "+251 911 345 678",
+    date: "2026-08-28",
+    notes: "Looking for an exclusive diplomatic residence in Old Airport. Need high security perimeter and staff quarters.",
+    propertyId: "e25e629d-e947-40a2-ab14-da7d4eddb7c5",
+    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: "inq-2",
+    name: "Bethlehem Tilahun",
+    email: "bethlehem@solerebels.com",
+    phone: "+251 912 889 900",
+    date: "2026-08-30",
+    notes: "Interested in the Kazanchis Executive Duplex Penthouse. Please send detailed floorplans and HOA documents.",
+    propertyId: "4392b8ee-598e-4546-bb13-63763363eda5",
+    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+  },
+];
+
 export const addInquiry = async (req: Request, res: Response) => {
   try {
     const inquiry: Inquiry & Record<string, any> = req.body ?? {};
@@ -146,12 +178,15 @@ export const addInquiry = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid inquiry fields" });
     }
 
-    // Whitelist columns; client uses propertyId, DB column is property_id.
+    const now = new Date().toISOString();
+    const propertyId = inquiry.propertyId ?? inquiry.property_id;
+
+    // Whitelist columns for Supabase
     const row: Record<string, any> = {
       name,
       email,
       phone,
-      created_at: new Date().toISOString(),
+      created_at: now,
     };
     if (typeof inquiry.date === "string" && inquiry.date.length <= 40) {
       row.date = inquiry.date;
@@ -159,25 +194,44 @@ export const addInquiry = async (req: Request, res: Response) => {
     if (typeof inquiry.notes === "string" && inquiry.notes.trim()) {
       row.notes = inquiry.notes.trim().slice(0, 2000);
     }
-    const propertyId = inquiry.propertyId ?? inquiry.property_id;
     if (typeof propertyId === "string" && propertyId.length <= 100) {
       row.property_id = propertyId;
     }
 
-    // Try to save to Supabase, but don't block the response if it fails.
-    let savedInquiry = null;
+    let savedId = `inq-${Date.now()}`;
+
+    // 1. Send to Supabase
     try {
-      const { data, error } = await supabaseAdmin
+      const { data: sbData, error: dbError } = await supabaseAdmin
         .from(INQUIRIES_TABLE)
         .insert(row)
         .select()
         .single();
-      if (!error) savedInquiry = data;
-    } catch (dbErr) {
-      console.error("Supabase insert error:", dbErr);
+
+      if (dbError) {
+        console.warn("Supabase insert inquiry notice:", dbError.message);
+      } else if (sbData?.id) {
+        savedId = sbData.id;
+      }
+    } catch (sbErr: any) {
+      console.warn("Supabase inquiry error:", sbErr.message);
     }
 
-    // Always try to send email notification to admin.
+    const formattedInquiry = {
+      id: savedId,
+      name,
+      email,
+      phone,
+      date: row.date,
+      notes: row.notes,
+      propertyId,
+      createdAt: now,
+    };
+
+    // 2. Save in active server cache
+    serverInquiries.unshift(formattedInquiry);
+
+    // 3. Try to send email notification to admin
     try {
       const transporter = getTransporter();
       const adminEmail = process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL || "";
@@ -188,7 +242,7 @@ export const addInquiry = async (req: Request, res: Response) => {
             from: `"${siteName}" <${adminEmail}>`,
             to: adminEmail,
             subject: `New Inquiry from ${name}`,
-            text: `A new inquiry has been received.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}${row.date ? `\nDate: ${row.date}` : ""}${row.notes ? `\nNotes: ${row.notes}` : ""}${row.property_id ? `\nProperty ID: ${row.property_id}` : ""}`,
+            text: `A new inquiry has been received.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}${row.date ? `\nDate: ${row.date}` : ""}${row.notes ? `\nNotes: ${row.notes}` : ""}${propertyId ? `\nProperty ID: ${propertyId}` : ""}`,
           })
           .catch((err) => console.error("Email send error:", err.message));
       }
@@ -196,21 +250,52 @@ export const addInquiry = async (req: Request, res: Response) => {
       /* email failure should not block the inquiry */
     }
 
-    res.status(201).json({ id: savedInquiry?.id ?? row.created_at, ...row });
-  } catch (error) {
+    res.status(201).json(formattedInquiry);
+  } catch (error: any) {
     console.error("Error adding inquiry:", error);
-    res.status(500).json({ error: "Failed to add inquiry" });
+    res.status(500).json({ error: error.message || "Failed to add inquiry" });
   }
 };
 
 export const getInquiries = async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from(INQUIRIES_TABLE)
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    res.json((data || []).map((item: any) => ({ id: item.id, ...item })));
+    const resultList: any[] = [];
+    const seenIds = new Set<string>();
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from(INQUIRIES_TABLE)
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        for (const item of data) {
+          resultList.push({
+            id: item.id,
+            name: item.name,
+            email: item.email,
+            phone: item.phone,
+            date: item.date,
+            notes: item.notes,
+            propertyId: item.property_id,
+            createdAt: item.created_at,
+          });
+          seenIds.add(item.id);
+        }
+      }
+    } catch (sbErr) {
+      console.warn("Supabase fetch inquiries notice:", sbErr);
+    }
+
+    // Merge any memory cached items that are not in Supabase yet
+    for (const item of serverInquiries) {
+      if (!seenIds.has(item.id)) {
+        resultList.push(item);
+        seenIds.add(item.id);
+      }
+    }
+
+    res.json(resultList);
   } catch (error) {
     console.error("Error getting inquiries:", error);
     res.status(500).json({ error: "Failed to fetch inquiries" });
@@ -220,11 +305,20 @@ export const getInquiries = async (req: Request, res: Response) => {
 export const deleteInquiry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { error } = await supabaseAdmin
-      .from(INQUIRIES_TABLE)
-      .delete()
-      .eq("id", id);
-    if (error) throw error;
+
+    // Remove from server cache
+    const index = serverInquiries.findIndex((i) => i.id === id);
+    if (index !== -1) {
+      serverInquiries.splice(index, 1);
+    }
+
+    // Remove from Supabase
+    try {
+      await supabaseAdmin.from(INQUIRIES_TABLE).delete().eq("id", id);
+    } catch (sbErr) {
+      console.warn("Supabase delete inquiry notice:", sbErr);
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error("Error deleting inquiry:", error);

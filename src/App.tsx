@@ -404,16 +404,16 @@ export default function App() {
 
       <footer className="py-12 border-t border-white/5 text-center flex flex-col items-center gap-3">
         <div className="text-white/20 text-[10px] uppercase tracking-[0.4em]">
-          &copy; 2026 {siteSettings.siteName} {t("luxury_real_estate")}.{" "}
-          {t("all_rights_reserved")}
+          @2026 Gudeta Technologies. All Rights Reserved.
         </div>
         <button
           type="button"
           onClick={() => navigateTo(isAdminLoggedIn ? "/admin" : "/AdminLogin")}
-          className="text-[11px] uppercase tracking-widest text-white/30 hover:text-gold transition-colors flex items-center gap-1.5 cursor-pointer"
+          className="text-white/30 hover:text-gold transition-colors p-2 rounded-full hover:bg-white/5 cursor-pointer"
+          title={isAdminLoggedIn ? t("dashboard") : t("admin_portal")}
+          aria-label={isAdminLoggedIn ? t("dashboard") : t("admin_portal")}
         >
-          <Lock className="w-3 h-3" />
-          <span>{isAdminLoggedIn ? t("dashboard") : t("admin_portal")}</span>
+          <Lock className="w-3.5 h-3.5" />
         </button>
       </footer>
 
