@@ -12,9 +12,16 @@ async function runMigration() {
 
   const connectionString =
     process.env.DATABASE_URL ||
-    `postgresql://${process.env.DB_USER || "postgres"}:${encodeURIComponent(process.env.DB_PASSWORD || "OMAMstudio@2026")}@${process.env.DB_HOST || "db.lkhyqibtmhlxhvtbzecy.supabase.co"}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || "postgres"}`;
+    (process.env.DB_HOST && process.env.DB_PASSWORD
+      ? `postgresql://${process.env.DB_USER || "postgres"}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || "postgres"}`
+      : "");
 
-  console.log("Connecting to PostgreSQL at:", process.env.DB_HOST || "db.lkhyqibtmhlxhvtbzecy.supabase.co");
+  if (!connectionString) {
+    console.error("❌ DATABASE_URL or DB_HOST + DB_PASSWORD is required in environment variables.");
+    process.exit(1);
+  }
+
+  console.log("Connecting to PostgreSQL database...");
 
   const client = new Client({
     connectionString,

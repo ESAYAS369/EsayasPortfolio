@@ -72,11 +72,10 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // 2. Check local configured admin credentials
-    if (!authenticated) {
+    if (!authenticated && ADMIN_PASSWORD) {
       const isEmailMatch =
         inputIdentifier === ADMIN_EMAIL ||
-        inputIdentifier === "admin" ||
-        inputIdentifier === "admin@esayas.com";
+        (ADMIN_EMAIL ? inputIdentifier === ADMIN_EMAIL.split("@")[0] : false);
       const isPasswordMatch = inputPassword === ADMIN_PASSWORD;
 
       if (isEmailMatch && isPasswordMatch) {

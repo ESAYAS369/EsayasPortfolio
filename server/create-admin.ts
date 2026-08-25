@@ -6,9 +6,14 @@ async function createAdminUser() {
   console.log("  PROVISIONING ADMIN USER IN SUPABASE");
   console.log("=========================================\n");
 
-  const email = (process.env.ADMIN_EMAIL || "esayasadal369@gmail.com").toLowerCase().trim();
-  const password = process.env.ADMIN_PASSWORD || "OMAMstudio@2026";
+  const email = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
+  const password = process.env.ADMIN_PASSWORD || "";
   const name = process.env.ADMIN_NAME || "Esayas Adal";
+
+  if (!email || !password) {
+    console.error("❌ ADMIN_EMAIL and ADMIN_PASSWORD must be configured in environment variables (.env).");
+    process.exit(1);
+  }
 
   console.log(`Admin Email:    ${email}`);
   console.log(`Admin Name:     ${name}`);
